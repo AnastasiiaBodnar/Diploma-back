@@ -1,16 +1,18 @@
-const { Pool } = require('pg');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { PrismaClient } = require('@prisma/client');
+import pg from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 
-// Create PostgreSQL connection pool
+const { Pool } = pg;
+
+// Створюємо пул підключень до PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Initialize Prisma driver adapter for PostgreSQL
+// Ініціалізуємо Prisma адаптер
 const adapter = new PrismaPg(pool);
 
-// Instantiate PrismaClient with the adapter
+// Створюємо екземпляр PrismaClient з адаптером
 const prisma = new PrismaClient({ adapter });
 
-module.exports = prisma;
+export default prisma;

@@ -1,9 +1,8 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const authMiddleware = (req, res, next) => {
-
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -14,13 +13,11 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
     req.user = decoded;
-    
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Недійсний або протермінований токен' });
   }
 };
 
-module.exports = authMiddleware;
+export default authMiddleware;

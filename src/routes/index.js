@@ -1,6 +1,7 @@
-const express = require('express');
+import express from 'express';
+import authRoutes from './authRoutes.js';
+
 const router = express.Router();
-const authRoutes = require('./authRoutes');
 
 router.get('/status', (req, res) => {
   res.json({ status: 'OK', message: 'API is working properly' });
@@ -8,4 +9,4 @@ router.get('/status', (req, res) => {
 
 router.use('/auth', authRoutes);
 
-module.exports = router;
+export default router;

@@ -124,3 +124,4 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+/src/generated/prisma

@@ -12,6 +12,15 @@ const register = async (req, res) => {
             return res.status(400).json({error: 'Email та пароль є обов’язковими'});
         }
 
+        // Перевіряємо, чи вже існує такий email у базі
+        const existingUser = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ error: 'Користувач з таким email вже існує' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await prisma.user.create({

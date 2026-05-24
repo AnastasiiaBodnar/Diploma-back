@@ -16,4 +16,44 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  listings  Listing[] // Оголошення, створені користувачем (як орендодавець)
+  bookings  Booking[] // Бронювання, які здійснив користувач (як орендар)
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  slug     String    @unique // Для URL-адрес (наприклад, "tools")
+  listings Listing[]
+}
+
+model Listing {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  price       Float     // Ціна оренди за добу
+  deposit     Float     // Завдаток (застава)
+  location    String    // Локація
+  imageUrl    String?   // Посилання на фото
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  Int
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  bookings    Booking[]
+}
+
+model Booking {
+  id         Int      @id @default(autoincrement())
+  listingId  Int
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tenantId   Int      // Хто орендує (орендар)
+  tenant     User     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  startDate  DateTime // Дата початку оренди
+  endDate    DateTime // Дата закінчення оренди
+  totalPrice Float    // Загальна вартість оренди
+  status     String   @default("PENDING") // Статуси: PENDING, CONFIRMED, REJECTED, CANCELLED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

@@ -1,10 +1,10 @@
-const bcrypt = require('bcryptjs');
-const jwt = require ('jsonwebtoken');
-const prisma =require('../config/prisma');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import prisma from '../config/prisma.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const register = async (req, res) => {
+export const register = async (req, res) => {
     try {
         const {email, password, name} = req.body;
         
@@ -42,12 +42,12 @@ const register = async (req, res) => {
     }
 
     catch (error) {
-        console.log ('');
+        console.error('Помилка реєстрації:', error);
         res.status(500).json({ error: 'Помилка на сервері під час реєстрації'});
     }
 };
 
-const login = async (req, res) => {
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -82,26 +82,20 @@ const login = async (req, res) => {
     }
 };
 
-const getProfile = async (req, res) => {
+export const getProfile = async (req, res) => {
     try{
         const user = await prisma.user.findUnique({
             where: { id: req.user.userId },
             select: { id: true, email: true, name: true, createdAt: true },
         });
 
-    if (!user) {
-      return res.status(404).json({ error: 'Користувача не знайдено' });
-    }
-    res.json(user);
+        if (!user) {
+          return res.status(404).json({ error: 'Користувача не знайдено' });
+        }
+        res.json(user);
     } 
     catch (error) {
-    console.error('Помилка отримання профілю:', error);
-    res.status(500).json({ error: 'Помилка сервера' });  
+        console.error('Помилка отримання профілю:', error);
+        res.status(500).json({ error: 'Помилка сервера' });  
     }
-};
-
-module.exports = {
-  register,
-  login,
-  getProfile,
 };

@@ -1,4 +1,25 @@
 import prisma from '../config/prisma.js';
+import cloudinary from '../config/cloudinary.js';
+
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'rentlocal_listings', // Папка у вашому акаунті Cloudinary
+        resource_type: 'image',
+        transformation: [
+          { width: 1000, height: 1000, crop: 'limit', quality: 'auto', fetch_format: 'auto' } 
+          // Автоматичне стиснення, ліміт розміру 1000px та конвертація у WebP/найкращий формат
+        ]
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url); // Повертаємо безпечне https посилання на фото
+      }
+    );
+    stream.end(fileBuffer);
+  });
+};
 
 // 1. Отримання всіх оголошень із фільтрацією
 export const getListings = async (req, res) => {
@@ -7,7 +28,6 @@ export const getListings = async (req, res) => {
     
     const where = {};
 
-    // Фільтр за категорією
     if (category) {
       if (!isNaN(category)) {
         where.categoryId = parseInt(category, 10);
@@ -18,7 +38,6 @@ export const getListings = async (req, res) => {
       }
     }
 
-    // Пошук за ключовим словом
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -26,14 +45,12 @@ export const getListings = async (req, res) => {
       ];
     }
 
-    // Фільтр за ціною
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price.gte = parseFloat(minPrice);
       if (maxPrice) where.price.lte = parseFloat(maxPrice);
     }
 
-    // Фільтр за локацією 
     if (location) {
       where.location = { contains: location };
     }
@@ -65,7 +82,7 @@ export const getListings = async (req, res) => {
 // 2. Створення нового оголошення (тільки для авторизованих користувачів)
 export const createListing = async (req, res) => {
   try {
-    const { title, description, price, deposit, location, imageUrl, categoryId } = req.body;
+    const { title, description, price, deposit, location, categoryId } = req.body;
     const userId = req.user.userId;
 
     if (!title || !description || price === undefined || deposit === undefined || !location || !categoryId) {
@@ -92,6 +109,17 @@ export const createListing = async (req, res) => {
       return res.status(400).json({ error: 'Вказаної категорії не існує' });
     }
 
+    // ЗАВАНТАЖЕННЯ ФОТО ДО CLOUDINARY
+    let imageUrl = null;
+    if (req.file) {
+      try {
+        imageUrl = await uploadToCloudinary(req.file.buffer);
+      } catch (uploadError) {
+        console.error('Помилка завантаження фото в Cloudinary:', uploadError);
+        return res.status(500).json({ error: 'Не вдалося завантажити зображення на хмарний сервер' });
+      }
+    }
+
     const newListing = await prisma.listing.create({
       data: {
         title,
@@ -99,7 +127,7 @@ export const createListing = async (req, res) => {
         price: priceNum,
         deposit: depositNum,
         location,
-        imageUrl,
+        imageUrl, // Зберігаємо отриманий лінк на фото
         userId,
         categoryId: categoryIdNum,
       },

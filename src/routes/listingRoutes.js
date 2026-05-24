@@ -1,6 +1,7 @@
 import express from 'express';
 import { getListings, createListing } from '../controllers/listingController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
+import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -8,6 +9,6 @@ const router = express.Router();
 router.get('/', getListings);
 
 // POST /api/listings - створити оголошення (потрібен токен авторизації)
-router.post('/', authMiddleware, createListing);
+router.post('/', authMiddleware, upload.single('image'), createListing);
 
 export default router;

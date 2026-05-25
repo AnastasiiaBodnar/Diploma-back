@@ -40,8 +40,8 @@ export const getListings = async (req, res) => {
 
     if (search) {
       where.OR = [
-        { title: { contains: search } },
-        { description: { contains: search } },
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -52,13 +52,14 @@ export const getListings = async (req, res) => {
     }
 
     if (location) {
-      where.location = { contains: location };
+      where.location = { contains: location, mode: 'insensitive' };
     }
 
     const listings = await prisma.listing.findMany({
       where,
       include: {
         category: true,
+        bookings: true,
         user: {
           select: {
             id: true,
@@ -82,7 +83,7 @@ export const getListings = async (req, res) => {
 // 2. Створення нового оголошення (тільки для авторизованих користувачів)
 export const createListing = async (req, res) => {
   try {
-    const { title, description, price, deposit, location, categoryId } = req.body;
+    const { title, description, price, deposit, location, categoryId, latitude, longitude } = req.body;
     const userId = req.user.userId;
 
     if (!title || !description || price === undefined || deposit === undefined || !location || !categoryId) {
@@ -101,6 +102,10 @@ export const createListing = async (req, res) => {
       return res.status(400).json({ error: 'Завдаток повинен бути додатним числом' });
     }
 
+    //Перетворюємо координати у Float, якщо вони передані, або записуємо null
+    const latitudeNum = latitude ? parseFloat(latitude) : null;
+    const longitudeNum = longitude ? parseFloat(longitude) : null;
+
     const categoryExists = await prisma.category.findUnique({
       where: { id: categoryIdNum },
     });
@@ -109,7 +114,6 @@ export const createListing = async (req, res) => {
       return res.status(400).json({ error: 'Вказаної категорії не існує' });
     }
 
-    // ЗАВАНТАЖЕННЯ ФОТО ДО CLOUDINARY
     let imageUrl = null;
     if (req.file) {
       try {
@@ -127,7 +131,9 @@ export const createListing = async (req, res) => {
         price: priceNum,
         deposit: depositNum,
         location,
-        imageUrl, // Зберігаємо отриманий лінк на фото
+        latitude: latitudeNum, // Зберігаємо широту
+        longitude: longitudeNum, // Зберігаємо довготу
+        imageUrl,
         userId,
         categoryId: categoryIdNum,
       },

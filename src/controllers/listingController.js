@@ -133,6 +133,13 @@ export const createListing = async (req, res) => {
       },
       include: {
         category: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -143,5 +150,34 @@ export const createListing = async (req, res) => {
   } catch (error) {
     console.error('Помилка створення оголошення:', error);
     res.status(500).json({ error: 'Помилка на сервері під час створення оголошення' });
+  }
+};
+
+// 3. Отримання власних оголошень користувача (як власник)
+export const getMyListings = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const listings = await prisma.listing.findMany({
+      where: { userId },
+      include: {
+        category: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    res.json(listings);
+  } catch (error) {
+    console.error('Помилка отримання власних оголошень:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час отримання ваших оголошень' });
   }
 };

@@ -59,10 +59,10 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'Цей предмет уже заброньовано на вказані дати' });
     }
 
-    // Розрахунок загальної вартості (різниця в днях)
+    // Розрахунок загальної вартості (оренда за всі дні + застава)
     const timeDiff = end.getTime() - start.getTime();
-    const days = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Переводимо мілісекунди в дні
-    const totalPrice = listing.price * days;
+    const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const totalPrice = (listing.price * days) + listing.deposit;
 
     const booking = await prisma.booking.create({
       data: {

@@ -187,3 +187,40 @@ export const getMyListings = async (req, res) => {
     res.status(500).json({ error: 'Помилка на сервері під час отримання ваших оголошень' });
   }
 };
+
+// 4. Видалення власного оголошення
+export const deleteListing = async (req, res) => {
+  try {
+    const idNum = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
+
+    if (isNaN(idNum)) {
+      return res.status(400).json({ error: 'Некоректний ID оголошення' });
+    }
+
+    const listing = await prisma.listing.findUnique({
+      where: { id: idNum },
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    if (listing.userId !== userId) {
+      return res.status(403).json({ error: 'Ви не маєте прав на видалення цього оголошення' });
+    }
+
+    await prisma.booking.deleteMany({
+      where: { listingId: idNum },
+    });
+
+    await prisma.listing.delete({
+      where: { id: idNum },
+    });
+
+    res.json({ message: 'Оголошення успішно видалено' });
+  } catch (error) {
+    console.error('Помилка видалення оголошення:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час видалення оголошення' });
+  }
+};

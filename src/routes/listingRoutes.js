@@ -1,5 +1,5 @@
 import express from 'express';
-import { getListings, createListing, getMyListings } from '../controllers/listingController.js';
+import { getListings, createListing, getMyListings, deleteListing } from '../controllers/listingController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
@@ -13,5 +13,8 @@ router.get('/', getListings);
 
 // POST /api/listings - створити оголошення (потрібен токен авторизації)
 router.post('/', authMiddleware, upload.single('image'), createListing);
+
+// DELETE /api/listings/:id - видалити власне оголошення (потрібен токен авторизації)
+router.delete('/:id', authMiddleware, deleteListing);
 
 export default router;

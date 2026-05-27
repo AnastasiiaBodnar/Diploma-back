@@ -18,6 +18,7 @@ model User {
   updatedAt DateTime @updatedAt
   listings  Listing[] // Оголошення, створені користувачем (як орендодавець)
   bookings  Booking[] // Бронювання, які здійснив користувач (як орендар)
+  notifications Notification[]
 }
 
 model Category {
@@ -44,6 +45,7 @@ model Listing {
   categoryId  Int
   category    Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   bookings    Booking[]
+  instantBooking Boolean  @default(false) // Чи активоване миттєве бронювання
 }
 
 model Booking {
@@ -58,4 +60,14 @@ model Booking {
   status     String   @default("PENDING") // Статуси: PENDING, CONFIRMED, REJECTED, CANCELLED
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  type      String   // Тип сповіщення (BOOKING_REQUEST, BOOKING_CONFIRMED, BOOKING_CANCELLED, ITEM_BROKEN)
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

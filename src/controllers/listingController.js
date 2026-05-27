@@ -224,3 +224,143 @@ export const deleteListing = async (req, res) => {
     res.status(500).json({ error: 'Помилка на сервері під час видалення оголошення' });
   }
 };
+
+// 5. Отримання оголошення за ID
+export const getListingById = async (req, res) => {
+  try {
+    const idNum = parseInt(req.params.id, 10);
+    if (isNaN(idNum)) {
+      return res.status(400).json({ error: 'Некоректний ID оголошення' });
+    }
+
+    const listing = await prisma.listing.findUnique({
+      where: { id: idNum },
+      include: {
+        category: true,
+        bookings: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    res.json(listing);
+  } catch (error) {
+    console.error('Помилка отримання оголошення за ID:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час отримання деталей оголошення' });
+  }
+};
+
+// 6. Оновлення оголошення за ID
+export const updateListing = async (req, res) => {
+  try {
+    const idNum = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
+
+    if (isNaN(idNum)) {
+      return res.status(400).json({ error: 'Некоректний ID оголошення' });
+    }
+
+    // Перевірка існування оголошення та прав власності
+    const existingListing = await prisma.listing.findUnique({
+      where: { id: idNum },
+    });
+
+    if (!existingListing) {
+      return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    if (existingListing.userId !== userId) {
+      return res.status(403).json({ error: 'Ви не маєте прав на редагування цього оголошення' });
+    }
+
+    const { title, description, price, deposit, location, categoryId, latitude, longitude } = req.body;
+
+    const updateData = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    
+    if (price !== undefined) {
+      const priceNum = parseFloat(price);
+      if (isNaN(priceNum) || priceNum < 0) {
+        return res.status(400).json({ error: 'Ціна повинна бути додатним числом' });
+      }
+      updateData.price = priceNum;
+    }
+
+    if (deposit !== undefined) {
+      const depositNum = parseFloat(deposit);
+      if (isNaN(depositNum) || depositNum < 0) {
+        return res.status(400).json({ error: 'Завдаток повинен бути додатним числом' });
+      }
+      updateData.deposit = depositNum;
+    }
+
+    if (location !== undefined) updateData.location = location;
+
+    if (latitude !== undefined) {
+      updateData.latitude = latitude ? parseFloat(latitude) : null;
+    }
+    if (longitude !== undefined) {
+      updateData.longitude = longitude ? parseFloat(longitude) : null;
+    }
+
+    if (categoryId !== undefined) {
+      const categoryIdNum = parseInt(categoryId, 10);
+      if (isNaN(categoryIdNum)) {
+        return res.status(400).json({ error: 'Некоректний ID категорії' });
+      }
+
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: categoryIdNum },
+      });
+
+      if (!categoryExists) {
+        return res.status(400).json({ error: 'Вказаної категорії не існує' });
+      }
+      updateData.categoryId = categoryIdNum;
+    }
+    
+    if (req.file) {
+      try {
+        const imageUrl = await uploadToCloudinary(req.file.buffer);
+        updateData.imageUrl = imageUrl;
+      } catch (uploadError) {
+        console.error('Помилка завантаження фото в Cloudinary:', uploadError);
+        return res.status(500).json({ error: 'Не вдалося завантажити нове зображення' });
+      }
+    }
+
+    const updatedListing = await prisma.listing.update({
+      where: { id: idNum },
+      data: updateData,
+      include: {
+        category: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      message: 'Оголошення успішно оновлено',
+      listing: updatedListing,
+    });
+  } catch (error) {
+    console.error('Помилка оновлення оголошення:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час оновлення оголошення' });
+  }
+};

@@ -283,9 +283,15 @@ export const updateListing = async (req, res) => {
       return res.status(403).json({ error: 'Ви не маєте прав на редагування цього оголошення' });
     }
 
-    const { title, description, price, deposit, location, categoryId, latitude, longitude } = req.body;
+    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking } = req.body;
 
     const updateData = {};
+
+    if (location !== undefined) updateData.location = location;
+
+    if (instantBooking !== undefined) {
+      updateData.instantBooking = instantBooking === 'true' || instantBooking === true;
+    }
 
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
@@ -363,5 +369,37 @@ export const updateListing = async (req, res) => {
   } catch (error) {
     console.error('Помилка оновлення оголошення:', error);
     res.status(500).json({ error: 'Помилка на сервері під час оновлення оголошення' });
+  }
+};
+
+// 7. Отримання календаря зайнятості оголошення (зайняті дати)
+export const getListingAvailability = async (req, res) => {
+  try {
+    const idNum = parseInt(req.params.id, 10);
+    if (isNaN(idNum)) {
+      return res.status(400).json({ error: 'Некоректний ID оголошення' });
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        listingId: idNum,
+        status: 'CONFIRMED',
+        endDate: {
+          gte: new Date(),
+        },
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+
+    res.json(bookings);
+  } catch (error) {
+    console.error('Помилка отримання зайнятих дат:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час отримання календаря зайнятості' });
   }
 };

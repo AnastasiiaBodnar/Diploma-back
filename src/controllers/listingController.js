@@ -83,7 +83,7 @@ export const getListings = async (req, res) => {
 // 2. Створення нового оголошення (тільки для авторизованих користувачів)
 export const createListing = async (req, res) => {
   try {
-    const { title, description, price, deposit, location, categoryId, latitude, longitude } = req.body;
+    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking } = req.body;
     const userId = req.user.userId;
 
     if (!title || !description || price === undefined || deposit === undefined || !location || !categoryId) {
@@ -136,6 +136,7 @@ export const createListing = async (req, res) => {
         imageUrl,
         userId,
         categoryId: categoryIdNum,
+        instantBooking: instantBooking === 'true' || instantBooking === true,
       },
       include: {
         category: true,

@@ -5,7 +5,8 @@ import {
   getMyListings, 
   deleteListing,
   getListingById,
-  updateListing
+  updateListing,
+  getListingAvailability
 } from '../controllers/listingController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // GET /api/listings/my - отримати власні оголошення поточного користувача
 router.get('/my', authMiddleware, getMyListings);
+
+// GET /api/listings/:id/availability - отримати зайняті дати оголошення
+router.get('/:id/availability', getListingAvailability);
 
 // GET /api/listings/:id - отримати деталі конкретного оголошення за ID
 router.get('/:id', getListingById);

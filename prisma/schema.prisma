@@ -34,6 +34,8 @@ model Listing {
   price       Float     // Ціна оренди за добу
   deposit     Float     // Завдаток (застава)
   location    String    // Локація
+  latitude    Float?    // Широта для карти
+  longitude   Float?    // Довгота для карти
   imageUrl    String?   // Посилання на фото
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

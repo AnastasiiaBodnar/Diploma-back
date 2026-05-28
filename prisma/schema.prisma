@@ -19,6 +19,7 @@ model User {
   listings  Listing[] // Оголошення, створені користувачем (як орендодавець)
   bookings  Booking[] // Бронювання, які здійснив користувач (як орендар)
   notifications Notification[]
+  reviews   Review[]
 }
 
 model Category {
@@ -46,6 +47,7 @@ model Listing {
   category    Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   bookings    Booking[]
   instantBooking Boolean  @default(false) // Чи активоване миттєве бронювання
+  reviews   Review[]
 }
 
 model Booking {
@@ -69,5 +71,16 @@ model Notification {
   message   String
   type      String   // Тип сповіщення (BOOKING_REQUEST, BOOKING_CONFIRMED, BOOKING_CANCELLED, ITEM_BROKEN)
   isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  listingId Int
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId    Int      // Автор відгуку (орендар)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int      // Оцінка (від 1 до 5 зірок)
+  comment   String   // Текстовий коментар
   createdAt DateTime @default(now())
 }

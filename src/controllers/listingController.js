@@ -310,10 +310,31 @@ export const getListingById = async (req, res) => {
       ? parseFloat((listing.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
       : null;
 
+    // Розрахунок загального рейтингу власника (середнє по всіх його речах)
+    const ownerListings = await prisma.listing.findMany({
+      where: { userId: listing.userId },
+      include: {
+        reviews: {
+          select: { rating: true }
+        }
+      }
+    });
+
+    const ownerReviews = ownerListings.flatMap(l => l.reviews);
+    const ownerReviewCount = ownerReviews.length;
+    const ownerAvgRating = ownerReviewCount > 0
+      ? parseFloat((ownerReviews.reduce((sum, r) => sum + r.rating, 0) / ownerReviewCount).toFixed(1))
+      : null;
+
     res.json({
       ...listing,
       avgRating,
       reviewCount,
+      user: {
+        ...listing.user,
+        ownerAvgRating,
+        ownerReviewCount
+      }
     });
   } catch (error) {
     console.error('Помилка отримання оголошення за ID:', error);

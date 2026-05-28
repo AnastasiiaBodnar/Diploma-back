@@ -5,23 +5,22 @@ const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: 'rentlocal_listings', // Папка у вашому акаунті Cloudinary
+        folder: 'rentlocal_listings',
         resource_type: 'image',
         transformation: [
           { width: 1000, height: 1000, crop: 'limit', quality: 'auto', fetch_format: 'auto' } 
-          // Автоматичне стиснення, ліміт розміру 1000px та конвертація у WebP/найкращий формат
         ]
       },
       (error, result) => {
         if (error) return reject(error);
-        resolve(result.secure_url); // Повертаємо безпечне https посилання на фото
+        resolve(result.secure_url);
       }
     );
     stream.end(fileBuffer);
   });
 };
 
-// 1. Отримання всіх оголошень із фільтрацією
+// 1. Отримання всіх оголошень із фільтрацією та рейтингом
 export const getListings = async (req, res) => {
   try {
     const { category, search, minPrice, maxPrice, location } = req.query;
@@ -67,13 +66,33 @@ export const getListings = async (req, res) => {
             email: true,
           },
         },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    res.json(listings);
+    // Розраховуємо середній рейтинг та кількість відгуків для кожного оголошення
+    const listingsWithRatings = listings.map(item => {
+      const reviewCount = item.reviews.length;
+      const avgRating = reviewCount > 0
+        ? parseFloat((item.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+        : null;
+
+      const { reviews, ...rest } = item;
+      return {
+        ...rest,
+        avgRating,
+        reviewCount,
+      };
+    });
+
+    res.json(listingsWithRatings);
   } catch (error) {
     console.error('Помилка отримання оголошень:', error);
     res.status(500).json({ error: 'Помилка на сервері під час отримання оголошень' });
@@ -160,7 +179,7 @@ export const createListing = async (req, res) => {
   }
 };
 
-// 3. Отримання власних оголошень користувача (як власник)
+// 3. Отримання власних оголошень користувача із рейтингом
 export const getMyListings = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -176,13 +195,32 @@ export const getMyListings = async (req, res) => {
             email: true,
           },
         },
+        reviews: {
+          select: {
+            rating: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    res.json(listings);
+    const listingsWithRatings = listings.map(item => {
+      const reviewCount = item.reviews.length;
+      const avgRating = reviewCount > 0
+        ? parseFloat((item.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+        : null;
+
+      const { reviews, ...rest } = item;
+      return {
+        ...rest,
+        avgRating,
+        reviewCount,
+      };
+    });
+
+    res.json(listingsWithRatings);
   } catch (error) {
     console.error('Помилка отримання власних оголошень:', error);
     res.status(500).json({ error: 'Помилка на сервері під час отримання ваших оголошень' });
@@ -226,7 +264,7 @@ export const deleteListing = async (req, res) => {
   }
 };
 
-// 5. Отримання оголошення за ID
+// 5. Отримання оголошення за ID (разом із детальними відгуками та рейтингом)
 export const getListingById = async (req, res) => {
   try {
     const idNum = parseInt(req.params.id, 10);
@@ -246,6 +284,20 @@ export const getListingById = async (req, res) => {
             email: true,
           },
         },
+        reviews: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -253,7 +305,37 @@ export const getListingById = async (req, res) => {
       return res.status(404).json({ error: 'Оголошення не знайдено' });
     }
 
-    res.json(listing);
+    const reviewCount = listing.reviews.length;
+    const avgRating = reviewCount > 0
+      ? parseFloat((listing.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+      : null;
+
+    // Розрахунок загального рейтингу власника (середнє по всіх його речах)
+    const ownerListings = await prisma.listing.findMany({
+      where: { userId: listing.userId },
+      include: {
+        reviews: {
+          select: { rating: true }
+        }
+      }
+    });
+
+    const ownerReviews = ownerListings.flatMap(l => l.reviews);
+    const ownerReviewCount = ownerReviews.length;
+    const ownerAvgRating = ownerReviewCount > 0
+      ? parseFloat((ownerReviews.reduce((sum, r) => sum + r.rating, 0) / ownerReviewCount).toFixed(1))
+      : null;
+
+    res.json({
+      ...listing,
+      avgRating,
+      reviewCount,
+      user: {
+        ...listing.user,
+        ownerAvgRating,
+        ownerReviewCount
+      }
+    });
   } catch (error) {
     console.error('Помилка отримання оголошення за ID:', error);
     res.status(500).json({ error: 'Помилка на сервері під час отримання деталей оголошення' });

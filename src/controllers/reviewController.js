@@ -67,7 +67,8 @@ export const createReview = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -98,7 +99,8 @@ export const getReviewsByListing = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },

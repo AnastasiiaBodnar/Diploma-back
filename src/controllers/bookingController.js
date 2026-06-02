@@ -33,7 +33,7 @@ export const createBooking = async (req, res) => {
       where: { id: parseInt(listingId, 10) },
       include: {
         user: {
-          select: { name: true }
+          select: { firstName: true, lastName: true }
         }
       }
     });
@@ -45,8 +45,10 @@ export const createBooking = async (req, res) => {
     // Отримуємо ім'я орендаря (для створення гарного сповіщення)
     const tenantUser = await prisma.user.findUnique({
       where: { id: tenantId },
-      select: { name: true }
+      select: { firstName: true, lastName: true }
     });
+
+    const tenantFullName = tenantUser ? `${tenantUser.firstName || ''} ${tenantUser.lastName || ''}`.trim() : '';
 
     const isOwner = listing.userId === tenantId;
 
@@ -118,7 +120,7 @@ export const createBooking = async (req, res) => {
         data: {
           userId: listing.userId,
           type: 'BOOKING_INSTANT',
-          message: `Користувач ${tenantUser.name || 'Орендар'} миттєво забронював ваш інструмент "${listing.title}" на період ${dateStr}.`
+          message: `Користувач ${tenantFullName || 'Орендар'} миттєво забронював ваш інструмент "${listing.title}" на період ${dateStr}.`
         }
       });
     } else {
@@ -134,7 +136,7 @@ export const createBooking = async (req, res) => {
         data: {
           userId: listing.userId,
           type: 'BOOKING_REQUEST_RECEIVED',
-          message: `Новий запит на оренду "${listing.title}" від ${tenantUser.name || 'користувача'} на дати ${dateStr}.`
+          message: `Новий запит на оренду "${listing.title}" від ${tenantFullName || 'користувача'} на дати ${dateStr}.`
         }
       });
     }
@@ -191,7 +193,8 @@ export const getMyRequests = async (req, res) => {
         tenant: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -222,7 +225,7 @@ export const updateBookingStatus = async (req, res) => {
       where: { id: parseInt(id, 10) },
       include: { 
         listing: true,
-        tenant: { select: { name: true } }
+        tenant: { select: { firstName: true, lastName: true } }
       },
     });
 
@@ -275,11 +278,12 @@ export const updateBookingStatus = async (req, res) => {
     } else if (status === 'CANCELLED') {
       if (isTenant) {
         // Орендар сам скасував
+        const tenantFullName = booking.tenant ? `${booking.tenant.firstName || ''} ${booking.tenant.lastName || ''}`.trim() : '';
         await prisma.notification.create({
           data: {
             userId: booking.listing.userId,
             type: 'BOOKING_CANCELLED_BY_TENANT',
-            message: `Користувач ${booking.tenant.name || 'Орендар'} скасував своє бронювання інструменту "${booking.listing.title}" на дати ${dateStr}.`
+            message: `Користувач ${tenantFullName || 'Орендар'} скасував своє бронювання інструменту "${booking.listing.title}" на дати ${dateStr}.`
           }
         });
       } else if (isOwner) {

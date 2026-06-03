@@ -37,21 +37,41 @@ export const getListings = async (req, res) => {
       }
     }
 
+    const conditions = [];
+
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      conditions.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ]
+      });
+    }
+
+    if (location) {
+      const stopWords = new Set(['область', 'обл', 'вулиця', 'вул', 'місто', 'район', 'село', 'смт', 'області']);
+      const words = location
+        .split(/[\s,]+/)
+        .map(w => w.trim().toLowerCase().replace(/[.,]/g, ''))
+        .filter(w => w.length >= 3 && !stopWords.has(w));
+
+      if (words.length > 0) {
+        conditions.push({
+          OR: words.map(word => ({
+            location: { contains: word, mode: 'insensitive' }
+          }))
+        });
+      }
+    }
+
+    if (conditions.length > 0) {
+      where.AND = conditions;
     }
 
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price.gte = parseFloat(minPrice);
       if (maxPrice) where.price.lte = parseFloat(maxPrice);
-    }
-
-    if (location) {
-      where.location = { contains: location, mode: 'insensitive' };
     }
 
     const listings = await prisma.listing.findMany({
@@ -62,7 +82,8 @@ export const getListings = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -162,7 +183,8 @@ export const createListing = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -191,7 +213,8 @@ export const getMyListings = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -280,7 +303,8 @@ export const getListingById = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -289,7 +313,8 @@ export const getListingById = async (req, res) => {
             user: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
               },
             },
@@ -437,7 +462,8 @@ export const updateListing = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },

@@ -1,5 +1,5 @@
-require('dotenv').config();
-const prisma = require('../src/config/prisma');
+import 'dotenv/config';
+import prisma from '../src/config/prisma.js';
 
 async function main() {
   console.log('Початок додавання категорій...');

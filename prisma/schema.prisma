@@ -63,6 +63,9 @@ model Booking {
   status     String   @default("PENDING") // Статуси: PENDING, CONFIRMED, REJECTED, CANCELLED
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  tomorrowReminderSent Boolean  @default(false)
+  endingReminderSent   Boolean  @default(false)
+  overdueReminderSent  Boolean  @default(false)
 }
 
 model Notification {

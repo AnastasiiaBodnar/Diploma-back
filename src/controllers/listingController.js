@@ -123,7 +123,7 @@ export const getListings = async (req, res) => {
 // 2. Створення нового оголошення (тільки для авторизованих користувачів)
 export const createListing = async (req, res) => {
   try {
-    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking } = req.body;
+    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking, checkInTime, checkOutTime } = req.body;
     const userId = req.user.userId;
 
     if (!title || !description || price === undefined || deposit === undefined || !location || !categoryId) {
@@ -177,6 +177,8 @@ export const createListing = async (req, res) => {
         userId,
         categoryId: categoryIdNum,
         instantBooking: instantBooking === 'true' || instantBooking === true,
+        checkInTime: checkInTime || '14:00',
+        checkOutTime: checkOutTime || '12:00',
       },
       include: {
         category: true,
@@ -390,9 +392,12 @@ export const updateListing = async (req, res) => {
       return res.status(403).json({ error: 'Ви не маєте прав на редагування цього оголошення' });
     }
 
-    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking } = req.body;
+    const { title, description, price, deposit, location, categoryId, latitude, longitude, instantBooking, checkInTime, checkOutTime } = req.body;
 
     const updateData = {};
+
+    if (checkInTime !== undefined) updateData.checkInTime = checkInTime;
+    if (checkOutTime !== undefined) updateData.checkOutTime = checkOutTime;
 
     if (location !== undefined) updateData.location = location;
 

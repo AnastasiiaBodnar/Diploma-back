@@ -49,6 +49,9 @@ model Listing {
   bookings    Booking[]
   instantBooking Boolean  @default(false) // Чи активоване миттєве бронювання
   reviews   Review[]
+
+  checkInTime  String    @default("14:00") // Час отримання
+  checkOutTime String    @default("12:00") // Час повернення
 }
 
 model Booking {

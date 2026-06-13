@@ -11,25 +11,7 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'listingId, startDate та endDate є обов’язковими' });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Обнуляємо час для коректного порівняння дат
-
-    // Валідація дат
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return res.status(400).json({ error: 'Некоректний формат дат' });
-    }
-
-    if (start < today) {
-      return res.status(400).json({ error: 'Дата початку оренди не може бути в минулому' });
-    }
-
-    if (end <= start) {
-      return res.status(400).json({ error: 'Дата завершення оренди повинна бути після дати початку' });
-    }
-
-    // Перевірка існування оголошення та отримання пошти власника
+    // Спочатку шукаємо оголошення, щоб отримати налаштований час
     const listing = await prisma.listing.findUnique({
       where: { id: parseInt(listingId, 10) },
       include: {
@@ -41,6 +23,26 @@ export const createBooking = async (req, res) => {
 
     if (!listing) {
       return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    // Визначаємо час отримання (Check-in) та повернення (Check-out)
+    const checkInTime = listing.checkInTime || '14:00';
+    const checkOutTime = listing.checkOutTime || '12:00';
+
+    const start = new Date(`${startDate}T${checkInTime}:00`);
+    const end = new Date(`${endDate}T${checkOutTime}:00`);
+
+    // Валідація дат
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Некоректний формат дат' });
+    }
+
+    if (start < new Date()) {
+      return res.status(400).json({ error: 'Дата та час початку оренди не можуть бути в минулому' });
+    }
+
+    if (end <= start) {
+      return res.status(400).json({ error: 'Дата завершення оренди повинна бути після дати початку' });
     }
 
     // Отримуємо дані орендаря
@@ -73,14 +75,14 @@ export const createBooking = async (req, res) => {
         // Блокуємо рядок оголошення для запобігання паралельним транзакціям
         await tx.$queryRaw`SELECT id FROM "Listing" WHERE id = ${listing.id} FOR UPDATE`;
 
-        // Перевірка на накладання дат (тільки CONFIRMED бронювання конфліктують)
+        // Перевірка на накладання дат за допомогою строгих нерівностей (lt та gt)
         const conflictingBooking = await tx.booking.findFirst({
           where: {
             listingId: listing.id,
             status: 'CONFIRMED',
             AND: [
-              { startDate: { lte: end } },
-              { endDate: { gte: start } },
+              { startDate: { lt: end } },
+              { endDate: { gt: start } },
             ],
           },
         });
@@ -343,8 +345,8 @@ export const updateBookingStatus = async (req, res) => {
               status: 'CONFIRMED',
               id: { not: booking.id }, // крім поточного запиту
               AND: [
-                { startDate: { lte: booking.endDate } },
-                { endDate: { gte: booking.startDate } },
+                { startDate: { lt: booking.endDate } },
+                { endDate: { gt: booking.startDate } },
               ],
             },
           });

@@ -29,12 +29,12 @@ export const createReview = async (req, res) => {
       return res.status(400).json({ error: 'Ви не можете залишати відгук на власну річ' });
     }
 
-    // Перевірка: чи орендував користувач цю річ раніше (статус CONFIRMED)
+    // Перевірка: чи орендував користувач цю річ раніше (статус CONFIRMED або COMPLETED)
     const existingBooking = await prisma.booking.findFirst({
       where: {
         listingId: listingIdNum,
         tenantId: userId,
-        status: 'CONFIRMED',
+        status: { in: ['CONFIRMED', 'COMPLETED'] },
       },
     });
 

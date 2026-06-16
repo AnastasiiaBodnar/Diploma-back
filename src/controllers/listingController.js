@@ -39,6 +39,15 @@ export const getListings = async (req, res) => {
 
     const conditions = [];
 
+    // Ховаємо зламані товари, у яких термін ремонту ще не минув
+    const now = new Date();
+    conditions.push({
+      OR: [
+        { brokenUntil: null },
+        { brokenUntil: { lt: now } }
+      ]
+    });
+
     if (search) {
       conditions.push({
         OR: [
@@ -513,6 +522,11 @@ export const getListingAvailability = async (req, res) => {
       return res.status(400).json({ error: 'Некоректний ID оголошення' });
     }
 
+    const listing = await prisma.listing.findUnique({
+      where: { id: idNum },
+      select: { brokenUntil: true }
+    });
+
     const bookings = await prisma.booking.findMany({
       where: {
         listingId: idNum,
@@ -530,9 +544,135 @@ export const getListingAvailability = async (req, res) => {
       },
     });
 
-    res.json(bookings);
+    const availability = [...bookings];
+    if (listing && listing.brokenUntil && new Date(listing.brokenUntil) > new Date()) {
+      availability.push({
+        startDate: new Date(),
+        endDate: listing.brokenUntil
+      });
+    }
+
+    res.json(availability);
   } catch (error) {
     console.error('Помилка отримання зайнятих дат:', error);
     res.status(500).json({ error: 'Помилка на сервері під час отримання календаря зайнятості' });
+  }
+};
+
+// 8. Повідомлення про те, що товар зламався (власник)
+export const reportBroken = async (req, res) => {
+  try {
+    const listingId = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
+    const { untilDate, reason } = req.body;
+
+    if (isNaN(listingId)) {
+      return res.status(400).json({ error: 'Недійсний ID оголошення' });
+    }
+
+    if (!untilDate) {
+      return res.status(400).json({ error: 'Необхідно вказати дату, до якої товар буде в ремонті' });
+    }
+
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId }
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    if (listing.userId !== userId) {
+      return res.status(403).json({ error: 'Немає доступу. Ви не є власником цього оголошення' });
+    }
+
+    const brokenUntilDate = new Date(untilDate);
+    if (isNaN(brokenUntilDate.getTime())) {
+      return res.status(400).json({ error: 'Невірний формат дати' });
+    }
+
+    // Оновлюємо статус оголошення (brokenUntil)
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { brokenUntil: brokenUntilDate }
+    });
+
+    // Шукаємо активні (PENDING або CONFIRMED) бронювання для цього оголошення,
+    // які перетинаються з періодом ремонту (починаються під час або до ремонту)
+    const bookings = await prisma.booking.findMany({
+      where: {
+        listingId,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        startDate: { lte: brokenUntilDate },
+        endDate: { gte: new Date() }
+      }
+    });
+
+    let cancelledCount = 0;
+
+    for (const booking of bookings) {
+      // Оновлюємо статус бронювання на CANCELLED
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: 'CANCELLED' }
+      });
+
+      // Надсилаємо сповіщення орендарю
+      const formattedUntilDate = brokenUntilDate.toLocaleDateString('uk-UA');
+      await prisma.notification.create({
+        data: {
+          userId: booking.tenantId,
+          type: 'ITEM_BROKEN',
+          message: `Оренда речі "${listing.title}" скасована власником через поломку товару. Причина: "${reason || 'технічні причини'}". (Очікуваний термін ремонту до ${formattedUntilDate}).`
+        }
+      });
+
+      cancelledCount++;
+    }
+
+    res.json({
+      message: `Товар позначено як зламаний до ${brokenUntilDate.toLocaleDateString('uk-UA')}. Скасовано ${cancelledCount} бронювань, а користувачів сповіщено.`,
+      cancelledCount
+    });
+  } catch (error) {
+    console.error('Помилка маркування товару як зламаного:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час маркування товару як зламаного' });
+  }
+};
+
+// 9. Позначення товару як справного / завершення ремонту (власник)
+export const resolveBroken = async (req, res) => {
+  try {
+    const listingId = parseInt(req.params.id, 10);
+    const userId = req.user.userId;
+
+    if (isNaN(listingId)) {
+      return res.status(400).json({ error: 'Недійсний ID оголошення' });
+    }
+
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId }
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Оголошення не знайдено' });
+    }
+
+    if (listing.userId !== userId) {
+      return res.status(403).json({ error: 'Немає доступу. Ви не є власником цього оголошення' });
+    }
+
+    // Оновлюємо статус оголошення (brokenUntil: null)
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { brokenUntil: null }
+    });
+
+    res.json({
+      message: 'Товар успішно позначено як справний. Його знову видно в каталозі!'
+    });
+  } catch (error) {
+    console.error('Помилка маркування товару як справного:', error);
+    res.status(500).json({ error: 'Помилка на сервері під час маркування товару як справного' });
   }
 };

@@ -44,6 +44,13 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'Дата завершення оренди повинна бути після дати початку' });
     }
 
+    // Перевірка, чи не знаходиться річ на ремонті в цей період
+    if (listing.brokenUntil && new Date(listing.brokenUntil) > new Date() && start <= new Date(listing.brokenUntil)) {
+      return res.status(400).json({ 
+        error: `Цей предмет знаходиться на ремонті до ${new Date(listing.brokenUntil).toLocaleDateString('uk-UA')}. Оренда в цей період неможлива.` 
+      });
+    }
+
     // Отримуємо дані орендаря
     const tenantUser = await prisma.user.findUnique({
       where: { id: tenantId },

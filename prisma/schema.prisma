@@ -54,6 +54,7 @@ model Listing {
   checkInTime  String    @default("14:00") // Час отримання
   checkOutTime String    @default("12:00") // Час повернення
   favoritedBy Favorite[]
+  brokenUntil  DateTime? // Термін, до якого товар зламаний (на ремонті)
 }
 
 model Booking {

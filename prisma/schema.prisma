@@ -21,6 +21,7 @@ model User {
   bookings  Booking[] // Бронювання, які здійснив користувач (як орендар)
   notifications Notification[]
   reviews   Review[]
+  favorites Favorite[]
 }
 
 model Category {
@@ -52,6 +53,7 @@ model Listing {
 
   checkInTime  String    @default("14:00") // Час отримання
   checkOutTime String    @default("12:00") // Час повернення
+  favoritedBy Favorite[]
 }
 
 model Booking {
@@ -90,4 +92,15 @@ model Review {
   rating    Int      // Оцінка (від 1 до 5 зірок)
   comment   String   // Текстовий коментар
   createdAt DateTime @default(now())
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId Int
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
 }

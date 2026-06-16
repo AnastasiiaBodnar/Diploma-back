@@ -26,10 +26,10 @@ router.get('/:id', getListingById);
 router.get('/', getListings);
 
 // POST /api/listings - створити оголошення
-router.post('/', authMiddleware, upload.single('image'), createListing);
+router.post('/', authMiddleware, upload.array('images', 3), createListing);
 
 // PUT /api/listings/:id - оновити власне оголошення
-router.put('/:id', authMiddleware, upload.single('image'), updateListing);
+router.put('/:id', authMiddleware, upload.array('images', 3), updateListing);
 
 // DELETE /api/listings/:id - видалити власне оголошення
 router.delete('/:id', authMiddleware, deleteListing);

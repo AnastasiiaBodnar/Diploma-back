@@ -39,7 +39,7 @@ model Listing {
   location    String    // Локація
   latitude    Float?    // Широта для карти
   longitude   Float?    // Довгота для карти
-  imageUrl    String?   // Посилання на фото
+  imageUrls   String[]  @default([]) // Посилання на фото (2-3 шт)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      Int

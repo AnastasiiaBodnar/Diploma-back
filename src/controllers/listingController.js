@@ -108,6 +108,7 @@ export const getListings = async (req, res) => {
       const { reviews, ...rest } = item;
       return {
         ...rest,
+        imageUrl: item.imageUrls[0] || null,
         avgRating,
         reviewCount,
       };
@@ -154,14 +155,17 @@ export const createListing = async (req, res) => {
       return res.status(400).json({ error: 'Вказаної категорії не існує' });
     }
 
-    let imageUrl = null;
-    if (req.file) {
-      try {
-        imageUrl = await uploadToCloudinary(req.file.buffer);
-      } catch (uploadError) {
-        console.error('Помилка завантаження фото в Cloudinary:', uploadError);
-        return res.status(500).json({ error: 'Не вдалося завантажити зображення на хмарний сервер' });
-      }
+    if (!req.files || req.files.length < 2 || req.files.length > 3) {
+      return res.status(400).json({ error: 'Вам необхідно завантажити 2 або 3 обов’язкові фотографії' });
+    }
+
+    let imageUrls = [];
+    try {
+      const uploadPromises = req.files.map(file => uploadToCloudinary(file.buffer));
+      imageUrls = await Promise.all(uploadPromises);
+    } catch (uploadError) {
+      console.error('Помилка завантаження фото в Cloudinary:', uploadError);
+      return res.status(500).json({ error: 'Не вдалося завантажити зображення на хмарний сервер' });
     }
 
     const newListing = await prisma.listing.create({
@@ -173,7 +177,7 @@ export const createListing = async (req, res) => {
         location,
         latitude: latitudeNum, // Зберігаємо широту
         longitude: longitudeNum, // Зберігаємо довготу
-        imageUrl,
+        imageUrls,
         userId,
         categoryId: categoryIdNum,
         instantBooking: instantBooking === 'true' || instantBooking === true,
@@ -193,9 +197,14 @@ export const createListing = async (req, res) => {
       },
     });
 
+    const listingWithCompat = {
+      ...newListing,
+      imageUrl: newListing.imageUrls[0] || null
+    };
+
     res.status(201).json({
       message: 'Оголошення успішно створено',
-      listing: newListing,
+      listing: listingWithCompat,
     });
   } catch (error) {
     console.error('Помилка створення оголошення:', error);
@@ -240,6 +249,7 @@ export const getMyListings = async (req, res) => {
       const { reviews, ...rest } = item;
       return {
         ...rest,
+        imageUrl: item.imageUrls[0] || null,
         avgRating,
         reviewCount,
       };
@@ -355,6 +365,7 @@ export const getListingById = async (req, res) => {
 
     res.json({
       ...listing,
+      imageUrl: listing.imageUrls[0] || null,
       avgRating,
       reviewCount,
       user: {
@@ -449,13 +460,17 @@ export const updateListing = async (req, res) => {
       updateData.categoryId = categoryIdNum;
     }
     
-    if (req.file) {
+    if (req.files && req.files.length > 0) {
+      if (req.files.length < 2 || req.files.length > 3) {
+        return res.status(400).json({ error: 'При оновленні фотографій вам необхідно завантажити 2 або 3 обов’язкові фотографії' });
+      }
       try {
-        const imageUrl = await uploadToCloudinary(req.file.buffer);
-        updateData.imageUrl = imageUrl;
+        const uploadPromises = req.files.map(file => uploadToCloudinary(file.buffer));
+        const imageUrls = await Promise.all(uploadPromises);
+        updateData.imageUrls = imageUrls;
       } catch (uploadError) {
         console.error('Помилка завантаження фото в Cloudinary:', uploadError);
-        return res.status(500).json({ error: 'Не вдалося завантажити нове зображення' });
+        return res.status(500).json({ error: 'Не вдалося завантажити нові зображення' });
       }
     }
 
@@ -475,9 +490,14 @@ export const updateListing = async (req, res) => {
       },
     });
 
+    const listingWithCompat = {
+      ...updatedListing,
+      imageUrl: updatedListing.imageUrls[0] || null
+    };
+
     res.json({
       message: 'Оголошення успішно оновлено',
-      listing: updatedListing,
+      listing: listingWithCompat,
     });
   } catch (error) {
     console.error('Помилка оновлення оголошення:', error);

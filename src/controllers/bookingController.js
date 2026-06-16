@@ -25,7 +25,6 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({ error: 'Оголошення не знайдено' });
     }
 
-    // Визначаємо час отримання (Check-in) та повернення (Check-out)
     const checkInTime = listing.checkInTime || '14:00';
     const checkOutTime = listing.checkOutTime || '12:00';
 

@@ -29,18 +29,24 @@ export const createReview = async (req, res) => {
       return res.status(400).json({ error: 'Ви не можете залишати відгук на власну річ' });
     }
 
-    // Перевірка: чи орендував користувач цю річ раніше (статус CONFIRMED)
+    // Перевірка: чи орендував користувач цю річ раніше і чи завершилася оренда (статус COMPLETED або CONFIRMED із закінченим терміном оренди)
     const existingBooking = await prisma.booking.findFirst({
       where: {
         listingId: listingIdNum,
         tenantId: userId,
-        status: 'CONFIRMED',
+        OR: [
+          { status: 'COMPLETED' },
+          {
+            status: 'CONFIRMED',
+            endDate: { lte: new Date() },
+          },
+        ],
       },
     });
 
     if (!existingBooking) {
       return res.status(403).json({ 
-        error: 'Ви можете залишити відгук тільки після успішної оренди цієї речі' 
+        error: 'Ви можете залишити відгук тільки після того, як оренда завершилася' 
       });
     }
 
@@ -67,7 +73,8 @@ export const createReview = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -98,7 +105,8 @@ export const getReviewsByListing = async (req, res) => {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },

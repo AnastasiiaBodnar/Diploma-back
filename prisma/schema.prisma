@@ -12,14 +12,16 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  password  String
-  name      String?
+  password  String?
+  firstName String?
+  lastName  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   listings  Listing[] // Оголошення, створені користувачем (як орендодавець)
   bookings  Booking[] // Бронювання, які здійснив користувач (як орендар)
   notifications Notification[]
   reviews   Review[]
+  favorites Favorite[]
 }
 
 model Category {
@@ -38,7 +40,7 @@ model Listing {
   location    String    // Локація
   latitude    Float?    // Широта для карти
   longitude   Float?    // Довгота для карти
-  imageUrl    String?   // Посилання на фото
+  imageUrls   String[]  @default([]) // Посилання на фото (2-3 шт)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      Int
@@ -48,6 +50,11 @@ model Listing {
   bookings    Booking[]
   instantBooking Boolean  @default(false) // Чи активоване миттєве бронювання
   reviews   Review[]
+
+  checkInTime  String    @default("14:00") // Час отримання
+  checkOutTime String    @default("12:00") // Час повернення
+  favoritedBy Favorite[]
+  brokenUntil  DateTime? // Термін, до якого товар зламаний (на ремонті)
 }
 
 model Booking {
@@ -62,6 +69,9 @@ model Booking {
   status     String   @default("PENDING") // Статуси: PENDING, CONFIRMED, REJECTED, CANCELLED
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  tomorrowReminderSent Boolean  @default(false)
+  endingReminderSent   Boolean  @default(false)
+  overdueReminderSent  Boolean  @default(false)
 }
 
 model Notification {
@@ -83,4 +93,15 @@ model Review {
   rating    Int      // Оцінка (від 1 до 5 зірок)
   comment   String   // Текстовий коментар
   createdAt DateTime @default(now())
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId Int
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
 }

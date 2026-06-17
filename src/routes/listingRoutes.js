@@ -6,7 +6,9 @@ import {
   deleteListing,
   getListingById,
   updateListing,
-  getListingAvailability
+  getListingAvailability,
+  reportBroken,
+  resolveBroken
 } from '../controllers/listingController.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
@@ -26,12 +28,18 @@ router.get('/:id', getListingById);
 router.get('/', getListings);
 
 // POST /api/listings - створити оголошення
-router.post('/', authMiddleware, upload.single('image'), createListing);
+router.post('/', authMiddleware, upload.array('images', 3), createListing);
 
 // PUT /api/listings/:id - оновити власне оголошення
-router.put('/:id', authMiddleware, upload.single('image'), updateListing);
+router.put('/:id', authMiddleware, upload.array('images', 3), updateListing);
 
 // DELETE /api/listings/:id - видалити власне оголошення
 router.delete('/:id', authMiddleware, deleteListing);
+
+// POST /api/listings/:id/report-broken - повідомити, що товар зламався (скасувати броні, надіслати сповіщення)
+router.post('/:id/report-broken', authMiddleware, reportBroken);
+
+// POST /api/listings/:id/resolve-broken - позначити товар як справний (завершити ремонт)
+router.post('/:id/resolve-broken', authMiddleware, resolveBroken);
 
 export default router;

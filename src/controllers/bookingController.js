@@ -236,6 +236,7 @@ export const getMyRentals = async (req, res) => {
         listing: {
           include: {
             category: true,
+            user: true,
           },
         },
       },

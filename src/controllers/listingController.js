@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import cloudinary from '../config/cloudinary.js';
+import { sendEmail } from '../services/emailService.js';
 
 const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
@@ -605,6 +606,15 @@ export const reportBroken = async (req, res) => {
         status: { in: ['PENDING', 'CONFIRMED'] },
         startDate: { lte: brokenUntilDate },
         endDate: { gte: new Date() }
+      },
+      include: {
+        tenant: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
       }
     });
 
@@ -626,6 +636,22 @@ export const reportBroken = async (req, res) => {
           message: `Оренда речі "${listing.title}" скасована власником через поломку товару. Причина: "${reason || 'технічні причини'}". (Очікуваний термін ремонту до ${formattedUntilDate}).`
         }
       });
+
+      // Надсилаємо Email орендарю
+      const tenantEmail = booking.tenant?.email;
+      if (tenantEmail) {
+        const dateStr = `${new Date(booking.startDate).toLocaleDateString('uk-UA')} - ${new Date(booking.endDate).toLocaleDateString('uk-UA')}`;
+        await sendEmail({
+          to: tenantEmail,
+          subject: `Скасовано ваше бронювання через несправність речі: ${listing.title}`,
+          html: `<h2>Привіт, ${booking.tenant.firstName || 'орендарю'}!</h2>
+                 <p>Власник був змушений скасувати ваше бронювання речі <strong>"${listing.title}"</strong> на період ${dateStr} через поломку товару.</p>
+                 <p><strong>Причина поломки:</strong> "${reason || 'технічні причини'}"</p>
+                 <p>Очікуваний термін завершення ремонту: <strong>${formattedUntilDate}</strong>.</p>
+                 <p>Застава та сплачені кошти будуть повністю повернуті.</p>
+                 <p>З повагою, команда RentLocal.</p>`
+        });
+      }
 
       cancelledCount++;
     }

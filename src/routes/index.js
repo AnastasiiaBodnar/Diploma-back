@@ -7,10 +7,16 @@ import notificationRoutes from './notificationRoutes.js';
 import reviewRoutes from './reviewRoutes.js';
 import favoriteRoutes from './favoriteRoutes.js';
 
+import { getSMTPStatus } from '../services/emailService.js';
+
 const router = express.Router();
 
 router.use('/status', (req, res) => {
-  res.json({ status: 'OK', message: 'API is working properly' });
+  res.json({
+    status: 'OK',
+    message: 'API is working properly',
+    emailService: getSMTPStatus()
+  });
 });
 
 router.use('/auth', authRoutes);
